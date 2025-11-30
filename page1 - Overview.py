@@ -27,15 +27,20 @@ df = load_and_prepare_data()
 # =============== SIDEBAR FILTERS ===============
 st.sidebar.header("FilterWhere")
 
-# Period (MM/YYYY) — sorted chronologically
+# Create MM/YYYY period
+df['period_mm_yyyy'] = df['month'].astype(str).str.zfill(2) + '/' + df['year'].astype(str)
+
+# Sort chronologically: MM/YYYY → (YYYY, MM)
 periods = sorted(
     df['period_mm_yyyy'].unique(),
     key=lambda x: (int(x.split('/')[1]), int(x.split('/')[0]))
 )
-selected_periods = st.sidebar.multiselect(
+
+# ✅ SINGLE DROPDOWN (selectbox) — not multiselect
+selected_period = st.sidebar.selectbox(
     "Period (MM/YYYY)",
-    options=periods,
-    default=periods  # show all by default
+    options=["All Periods"] + periods,  # add "All" option
+    index=0  # default: "All Periods"
 )
 
 # State filter (empty = all)
@@ -49,14 +54,17 @@ selected_categories = st.sidebar.multiselect("Category", categories, default=[])
 # Apply filters
 filtered = df.copy()
 
-if selected_periods:
-    filtered = filtered[filtered['period_mm_yyyy'].isin(selected_periods)]
+# Period filter
+if selected_period != "All Periods":
+    filtered = filtered[filtered['period_mm_yyyy'] == selected_period]
+
+# State & Category filters (only if selected)
 if selected_states:
     filtered = filtered[filtered['customer_state'].isin(selected_states)]
 if selected_categories:
     filtered = filtered[filtered['product_category_name_english'].isin(selected_categories)]
 
-# Handle empty result
+# Handle empty
 if filtered.empty:
     st.warning("No data matches the current filters.")
     st.stop()
@@ -193,7 +201,7 @@ else:
     st.info("No category has ≥10 orders with current filters.")
 
 # =============== BONUS: Freight Analysis ===============
-with st.expander("📦 Freight Cost Insights (Bonus)"):
+with st.expander("📦 Freight Cost Insights"):
     st.write("Freight as % of product price — key for margin analysis")
     
     # Avoid division by zero
